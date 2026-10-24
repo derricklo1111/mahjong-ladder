@@ -3,209 +3,495 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0f1115" />
+  <meta name="theme-color" content="#05071a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="麻將天梯" />
+  <meta name="apple-mobile-web-app-title" content="麻將齊打交" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
-  <title>麻將天梯 Rank S1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" />
+  <title>麻將齊打交 S1</title>
   <style>
+    /* 風格：小朋友齊打交（Little Fighter 2）式像素格鬥遊戲介面 */
     :root {
-      --bg-color: #0f1115;
-      --card-bg: #1a1d24;
-      --card-bg-2: #22262f;
-      --accent: #e50914;
-      --text-main: #f0f2f5;
-      --text-sub: #7a8290;
-      --win-color: #ff4d4f;   /* 紅色代表贏錢 */
-      --lose-color: #52c41a;  /* 綠色代表輸錢 */
-      --warn: #faad14;
-      --gold: #fadb14;
-      --silver: #d9d9d9;
-      --bronze: #d48806;
+      --bg-color: #05071a;
+      --panel-top: #2a48c8;
+      --panel-bottom: #0c1660;
+      --panel-edge: #8fb0ff;
+      --ink: #000;
+      --text-main: #ffffff;
+      --text-sub: #9fb4ff;
+      --yellow: #ffe23a;
+      --win-color: #ff3b30;   /* 紅色代表贏錢 */
+      --lose-color: #39e05a;  /* 綠色代表輸錢 */
+      --hp: #e8251b;
+      --hp-dark: #7a0d08;
+      --mp: #2f7bff;
+      --mp-dark: #0b2a7a;
+      --warn: #ffb020;
+      --gold: #ffd400;
+      --silver: #e4e8f0;
+      --bronze: #e08a2c;
+      --accent: #e8251b;
+      --pixel-font: "Press Start 2P", "DotGothic16", ui-monospace, monospace;
+      --cjk-font: "DotGothic16", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
     }
 
     * { box-sizing: border-box; }
+    [hidden]:not(.toast) { display: none !important; }
+
     body {
       margin: 0;
       padding: 16px;
       padding-top: max(16px, env(safe-area-inset-top));
-      background-color: var(--bg-color);
       color: var(--text-main);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      font-family: var(--cjk-font);
       display: flex;
       justify-content: center;
       -webkit-tap-highlight-color: transparent;
+      background-color: var(--bg-color);
+      /* 像素星空 + 掃描線 */
+      background-image:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px),
+        radial-gradient(1px 1px at 20% 30%, #fff8 50%, transparent 51%),
+        radial-gradient(1px 1px at 70% 10%, #fff6 50%, transparent 51%),
+        radial-gradient(2px 2px at 85% 60%, #9fb4ff88 50%, transparent 51%),
+        radial-gradient(1px 1px at 40% 80%, #fff5 50%, transparent 51%),
+        linear-gradient(180deg, #0a0f3a 0%, #05071a 60%);
+      background-attachment: fixed;
+      image-rendering: pixelated;
     }
 
     .container { width: 100%; max-width: 480px; }
 
-    header { text-align: center; margin: 20px 0 20px; }
-    header h1 { margin: 0; font-size: 26px; letter-spacing: 1.5px; font-weight: 800; }
-    header p { margin-top: 6px; font-size: 13px; color: var(--text-sub); }
+    /* 像素邊框面板（LF2 藍色漸層狀態欄） */
+    .panel {
+      background: linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
+      border: 3px solid var(--ink);
+      box-shadow:
+        inset 0 0 0 2px var(--panel-edge),
+        inset 0 0 0 4px var(--ink),
+        4px 4px 0 0 var(--ink);
+    }
 
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
+    header { text-align: center; margin: 16px 0 20px; }
+    header h1 {
+      margin: 0;
+      font-family: var(--cjk-font);
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: var(--yellow);
+      text-shadow:
+        3px 0 0 #c4161c, -3px 0 0 #c4161c, 0 3px 0 #c4161c, 0 -3px 0 #c4161c,
+        3px 3px 0 #c4161c, -3px -3px 0 #c4161c, 3px -3px 0 #c4161c, -3px 3px 0 #c4161c,
+        6px 6px 0 #000;
+      transform: skewX(-6deg);
     }
-    .tabs {
-      flex: 1;
-      display: flex;
-      background: var(--card-bg);
-      border-radius: 10px;
-      padding: 4px;
+    header .sub {
+      display: inline-block;
+      margin-top: 12px;
+      font-family: var(--pixel-font);
+      font-size: 10px;
+      color: #fff;
+      letter-spacing: 2px;
+      animation: blink 1.2s steps(1) infinite;
     }
-    .tab {
-      flex: 1;
-      border: 0;
-      background: transparent;
+    header p { margin: 8px 0 0; font-size: 13px; color: var(--text-sub); }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tabs { flex: 1; display: flex; gap: 6px; }
+    .tab, .refresh {
+      border: 3px solid var(--ink);
+      background: linear-gradient(180deg, #3b4fa8, #1a2470);
+      box-shadow: inset 0 0 0 2px #6d82d6, 3px 3px 0 var(--ink);
       color: var(--text-sub);
-      font: inherit;
-      font-size: 14px;
+      font-family: var(--cjk-font);
+      font-size: 15px;
       font-weight: 700;
       padding: 8px 0;
-      border-radius: 7px;
       cursor: pointer;
+      border-radius: 0;
     }
-    .tab[aria-selected="true"] { background: var(--card-bg-2); color: var(--text-main); }
-    .refresh {
-      border: 0;
-      background: var(--card-bg);
-      color: var(--text-main);
-      border-radius: 10px;
-      width: 44px;
-      font-size: 18px;
-      cursor: pointer;
+    .tab { flex: 1; position: relative; }
+    .tab[aria-selected="true"] {
+      color: var(--yellow);
+      background: linear-gradient(180deg, #d8331f, #7a0d08);
+      box-shadow: inset 0 0 0 2px #ff8a6a, 3px 3px 0 var(--ink);
     }
-    .refresh.spinning span { display: inline-block; animation: spin 0.9s linear infinite; }
+    .tab[aria-selected="true"]::before {
+      content: "►";
+      position: absolute;
+      left: 4px;
+      font-size: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      animation: blink 0.8s steps(1) infinite;
+    }
+    .tab:active, .refresh:active, .btn:active { transform: translate(2px, 2px); box-shadow: inset 0 0 0 2px #6d82d6, 1px 1px 0 var(--ink); }
+    .refresh { width: 46px; color: #fff; font-size: 18px; }
+    .refresh.spinning span { display: inline-block; animation: spin 0.6s steps(8) infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .status-box {
       text-align: center;
       padding: 30px;
-      color: var(--text-sub);
+      color: #fff;
       font-size: 15px;
+      text-shadow: 2px 2px 0 #000;
     }
     .notice {
-      font-size: 12px;
+      font-size: 13px;
       color: var(--text-sub);
       text-align: center;
-      margin: -6px 0 12px;
+      margin: -4px 0 12px;
+      text-shadow: 1px 1px 0 #000;
     }
     .notice.warn { color: var(--warn); }
 
-    .list { display: flex; flex-direction: column; gap: 12px; }
+    .list { display: flex; flex-direction: column; gap: 14px; }
 
+    /* ---------- 排行榜：角色狀態欄 ---------- */
     .player-card {
-      background: var(--card-bg);
-      border-radius: 12px;
-      padding: 16px 20px;
-      display: flex;
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
       align-items: center;
-      justify-content: space-between;
       gap: 12px;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      padding: 12px 14px;
     }
-    .left-section { display: flex; align-items: center; gap: 16px; min-width: 0; }
+    .portrait {
+      width: 56px;
+      height: 56px;
+      position: relative;
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 2px 2px 0 #000;
+      background: var(--face, #5a3a9a);
+      border: 3px solid var(--ink);
+      box-shadow: inset 0 0 0 2px #ffffff55;
+    }
     .rank-tag {
-      font-size: 18px;
-      font-weight: 800;
-      width: 30px;
-      flex-shrink: 0;
-      text-align: center;
-      color: var(--text-sub);
+      position: absolute;
+      left: -8px;
+      top: -10px;
+      font-family: var(--pixel-font);
+      font-size: 10px;
+      padding: 3px 4px;
+      color: #000;
+      background: #9fb4ff;
+      border: 2px solid var(--ink);
+      text-shadow: none;
     }
-    .rank-1 { color: var(--gold); }
-    .rank-2 { color: var(--silver); }
-    .rank-3 { color: var(--bronze); }
+    .rank-1 { background: var(--gold); }
+    .rank-2 { background: var(--silver); }
+    .rank-3 { background: var(--bronze); }
+    .crown { position: absolute; top: -18px; right: -6px; font-size: 16px; text-shadow: none; }
 
     .info-block { min-width: 0; }
     .info-block .name {
-      font-size: 17px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--yellow);
+      text-shadow: 2px 2px 0 #000;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .info-block .meta { font-size: 12px; color: var(--text-sub); margin-top: 3px; }
+    .bars { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+    .bar {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--pixel-font);
+      font-size: 7px;
+      color: #fff;
+    }
+    .bar .track {
+      height: 9px;
+      background: #000;
+      border: 1px solid #000;
+      box-shadow: 0 0 0 1px #ffffff40;
+      position: relative;
+      overflow: hidden;
+    }
+    .bar .fill { position: absolute; inset: 0 auto 0 0; }
+    .bar.hp .track { background: var(--hp-dark); }
+    .bar.hp .fill { background: linear-gradient(180deg, #ff8a7a 0 25%, var(--hp) 25%); }
+    .bar.mp .track { background: var(--mp-dark); }
+    .bar.mp .fill { background: linear-gradient(180deg, #9cc2ff 0 25%, var(--mp) 25%); }
+    .meta-row {
+      grid-column: 2 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: -4px;
+    }
+    .meta-row .meta { font-size: 12px; color: var(--text-sub); text-shadow: 1px 1px 0 #000; }
 
-    .trend { display: flex; gap: 3px; margin-top: 6px; }
-    .trend i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-sub); }
+    .trend { display: flex; gap: 3px; flex-shrink: 0; }
+    .trend i { width: 8px; height: 8px; background: #555; border: 1px solid #000; }
     .trend i.w { background: var(--win-color); }
     .trend i.l { background: var(--lose-color); }
 
-    .score-block { text-align: right; flex-shrink: 0; }
+    .score-block { text-align: right; }
     .amount {
-      font-size: 19px;
-      font-weight: 800;
-      font-family: "SF Pro Rounded", ui-monospace, Menlo, monospace;
+      font-family: var(--pixel-font);
+      font-size: 14px;
+      text-shadow: 2px 2px 0 #000;
       font-variant-numeric: tabular-nums;
     }
     .amount.win { color: var(--win-color); }
     .amount.lose { color: var(--lose-color); }
-    .amount.even { color: var(--text-sub); }
-    .score-block .avg { font-size: 11px; color: var(--text-sub); margin-top: 3px; }
+    .amount.even { color: #ccc; }
+    .score-block .avg { font-size: 11px; color: var(--text-sub); margin-top: 6px; text-shadow: 1px 1px 0 #000; }
 
-    /* 對局紀錄 */
+    /* ---------- 對局紀錄：VS 戰報 ---------- */
     .day-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-sub);
-      margin: 8px 4px -4px;
+      font-family: var(--pixel-font);
+      font-size: 11px;
+      color: var(--yellow);
+      text-shadow: 2px 2px 0 #000;
+      margin: 10px 2px -4px;
     }
+    .day-title::before { content: "▼ STAGE "; color: #fff; }
     .game-card {
-      background: var(--card-bg);
-      border-radius: 12px;
-      padding: 12px 16px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px 16px;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      grid-template-columns: 1fr auto 1fr;
+      gap: 6px 10px;
+      padding: 12px 14px;
+      align-items: center;
     }
-    .game-card.invalid { outline: 1px solid var(--warn); }
-    .game-card .seat { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+    .game-card.invalid { box-shadow: inset 0 0 0 2px var(--warn), inset 0 0 0 4px var(--ink), 4px 4px 0 0 var(--ink); }
+    .game-card .side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .game-card .vs {
+      font-family: var(--pixel-font);
+      font-size: 14px;
+      color: var(--yellow);
+      text-shadow: 2px 0 0 #c4161c, -2px 0 0 #c4161c, 0 2px 0 #c4161c, 0 -2px 0 #c4161c, 3px 3px 0 #000;
+    }
+    .game-card .seat { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 14px; text-shadow: 1px 1px 0 #000; }
     .game-card .seat .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .game-card .seat .amount { font-size: 14px; }
-    .game-card .flag {
+    .game-card .seat .amount { font-size: 10px; }
+    .game-card .ko { color: var(--win-color); font-family: var(--pixel-font); font-size: 8px; margin-left: 2px; }
+    .game-card .flag { grid-column: 1 / -1; font-size: 12px; color: var(--warn); text-shadow: 1px 1px 0 #000; }
+    .game-card .del {
       grid-column: 1 / -1;
+      justify-self: end;
+      border: 2px solid var(--ink);
+      background: #1a2470;
+      color: var(--text-sub);
+      font: inherit;
       font-size: 12px;
-      color: var(--warn);
+      padding: 3px 8px;
+      cursor: pointer;
     }
+    .game-card .del:hover { color: #fff; background: #7a0d08; }
+    .game-card .del:disabled { opacity: 0.5; cursor: default; }
+
+    /* ---------- 記一筆：選擇角色 ---------- */
+    .entry { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+    .entry-title {
+      font-family: var(--pixel-font);
+      font-size: 12px;
+      color: var(--yellow);
+      text-align: center;
+      text-shadow: 2px 2px 0 #000;
+      letter-spacing: 1px;
+    }
+    .entry label.field, .entry .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 14px;
+      color: #fff;
+      text-shadow: 1px 1px 0 #000;
+    }
+    .entry input {
+      width: 100%;
+      min-width: 0;
+      background: #000;
+      border: 2px solid var(--panel-edge);
+      border-radius: 0;
+      color: var(--yellow);
+      font-family: var(--cjk-font);
+      font-size: 16px; /* 16px 以上 iOS 才不會自動放大 */
+      padding: 9px 10px;
+      color-scheme: dark;
+    }
+    .entry input::placeholder { color: #4a5a99; }
+    .entry input:focus { outline: none; border-color: var(--yellow); box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--yellow); }
+    #seats { display: flex; flex-direction: column; gap: 8px; }
+    .seat-row { display: grid; grid-template-columns: 28px 1fr 44px 96px; gap: 6px; align-items: center; }
+    .seat-row .p {
+      font-family: var(--pixel-font);
+      font-size: 9px;
+      text-align: center;
+      padding: 4px 0;
+      color: #000;
+      border: 2px solid #000;
+    }
+    .seat-row:nth-child(1) .p { background: #ff5a4a; }
+    .seat-row:nth-child(2) .p { background: #4aa8ff; }
+    .seat-row:nth-child(3) .p { background: #ffe23a; }
+    .seat-row:nth-child(4) .p { background: #5ae07a; }
+    .seat-row .sign {
+      height: 100%;
+      border: 2px solid var(--ink);
+      border-radius: 0;
+      font-family: var(--pixel-font);
+      font-size: 14px;
+      cursor: pointer;
+      color: #fff;
+      text-shadow: 1px 1px 0 #000;
+    }
+    .seat-row .sign.pos { background: var(--hp); }
+    .seat-row .sign.neg { background: #1f8a35; }
+    .seat-row input.score { text-align: right; font-family: var(--pixel-font); font-size: 14px; }
+    .sum-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      min-height: 32px;
+      text-shadow: 1px 1px 0 #000;
+    }
+    .sum-line.ok { color: var(--lose-color); }
+    .sum-line.bad { color: var(--warn); }
+    .btn {
+      border: 3px solid var(--ink);
+      border-radius: 0;
+      font-family: var(--cjk-font);
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .btn.small {
+      background: #1a2470;
+      color: var(--yellow);
+      font-size: 13px;
+      padding: 5px 10px;
+      box-shadow: inset 0 0 0 2px #6d82d6, 2px 2px 0 var(--ink);
+    }
+    .btn.primary {
+      background: linear-gradient(180deg, #ff5a3a, #b5140c);
+      color: var(--yellow);
+      font-size: 20px;
+      letter-spacing: 4px;
+      padding: 12px;
+      text-shadow: 2px 2px 0 #000;
+      box-shadow: inset 0 0 0 2px #ffb09a, 4px 4px 0 var(--ink);
+    }
+    .btn:disabled { filter: grayscale(0.8) brightness(0.7); cursor: default; }
+    .dong-field { display: grid !important; grid-template-columns: 1fr 96px; align-items: center; }
+    .dong-field small { color: var(--text-sub); font-size: 11px; }
+    .dong-line {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 13px;
+      color: #ffd88a;
+      text-shadow: 1px 1px 0 #000;
+      border-top: 2px dashed #ffffff30;
+      padding-top: 6px;
+    }
+    .dong-line .amount { font-size: 10px; }
+    .player-card.house {
+      background: linear-gradient(180deg, #8a5a00, #3a2200);
+      box-shadow: inset 0 0 0 2px #ffd24a, inset 0 0 0 4px var(--ink), 4px 4px 0 0 var(--ink);
+    }
+    .info-block .tag {
+      font-family: var(--pixel-font);
+      font-size: 8px;
+      color: #000;
+      background: #ffd24a;
+      border: 2px solid #000;
+      padding: 2px 3px;
+      margin-left: 6px;
+      vertical-align: 3px;
+      text-shadow: none;
+    }
+    .entry .error { color: var(--warn); font-size: 13px; min-height: 1em; text-shadow: 1px 1px 0 #000; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: max(24px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      padding: 10px 18px;
+      font-size: 15px;
+      color: var(--yellow);
+      text-shadow: 2px 2px 0 #000;
+      white-space: nowrap;
+      transition: opacity 0.15s steps(2);
+    }
+    .toast[hidden] { display: block; opacity: 0; pointer-events: none; }
 
     footer {
       text-align: center;
       font-size: 11px;
       color: var(--text-sub);
       margin: 24px 0 8px;
+      text-shadow: 1px 1px 0 #000;
     }
-  </style>
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before { animation: none !important; transition: none !important; }
+    }
+</style>
 </head>
 <body>
 
   <div class="container">
     <header>
-      <h1>🀄 麻將天梯 S1</h1>
+      <h1>麻將齊打交</h1>
+      <div class="sub">MAHJONG FIGHTER · S1</div>
       <p>大家都說自己輸，到底誰贏？</p>
     </header>
 
     <div class="toolbar">
       <div class="tabs" role="tablist">
-        <button class="tab" role="tab" data-view="ladder" aria-selected="true">排行榜</button>
-        <button class="tab" role="tab" data-view="history" aria-selected="false">對局紀錄</button>
+        <button class="tab" role="tab" data-view="ladder" aria-selected="true">戰力榜</button>
+        <button class="tab" role="tab" data-view="history" aria-selected="false">戰報</button>
+        <button class="tab" role="tab" data-view="entry" aria-selected="false">開打</button>
       </div>
       <button id="refresh" class="refresh" title="重新整理" aria-label="重新整理"><span>↻</span></button>
     </div>
 
     <div id="notice" class="notice" hidden></div>
-    <div id="status" class="status-box">🀄 洗牌中，拉取最新戰績…</div>
+    <div id="status" class="status-box">LOADING… 洗牌中，拉取最新戰績</div>
     <div id="list" class="list"></div>
+
+    <form id="entry" class="entry panel" hidden autocomplete="off">
+      <div class="entry-title">SELECT YOUR FIGHTERS</div>
+      <label class="field">日期
+        <input type="date" id="entry-date" required />
+      </label>
+      <div class="field">
+        選擇角色與輸贏
+        <div id="seats"></div>
+      </div>
+      <label class="field dong-field">
+        <span>東錢 <small>（這局抽給公基金的錢，沒有就填 0）</small></span>
+        <input id="entry-dong" class="score" inputmode="numeric" pattern="[0-9]*" placeholder="0" aria-label="東錢" />
+      </label>
+      <div id="sum-line" class="sum-line"></div>
+      <div id="entry-error" class="error" role="alert"></div>
+      <button type="submit" id="entry-submit" class="btn primary" disabled>FIGHT!</button>
+    </form>
+    <datalist id="player-names"></datalist>
 
     <footer id="footer"></footer>
   </div>
+
+  <div id="toast" class="toast panel" hidden role="status"></div>
 
   <script>
     // ⚠️ 替換為你的 Google Apps Script Web App URL（保留預設值會進入示範模式）
@@ -220,6 +506,17 @@
     const noticeEl = document.getElementById("notice");
     const footerEl = document.getElementById("footer");
     const refreshBtn = document.getElementById("refresh");
+    const entryForm = document.getElementById("entry");
+    const entryDate = document.getElementById("entry-date");
+    const seatsEl = document.getElementById("seats");
+    const sumLineEl = document.getElementById("sum-line");
+    const entryErrorEl = document.getElementById("entry-error");
+    const entrySubmit = document.getElementById("entry-submit");
+    const playerNamesEl = document.getElementById("player-names");
+    const toastEl = document.getElementById("toast");
+    const entryDong = document.getElementById("entry-dong");
+    const SEAT_COUNT = 4;
+    const HOUSE_NAME = "東";
 
     let records = [];
     let currentView = "ladder";
@@ -272,9 +569,24 @@
         });
       });
 
-      const list = Object.entries(players)
-        .map(([name, s]) => ({
+      // 「東」也是一位選手：每局抽走的東錢就是它的戰績，看看是不是東賺最多
+      const house = { total: 0, matches: 0, wins: 0, best: -Infinity, history: [] };
+      sorted.forEach(round => {
+        const dong = round.dong || 0;
+        house.total += dong;
+        house.matches += 1;
+        if (dong > 0) house.wins += 1;
+        house.best = Math.max(house.best, dong);
+        house.history.push(dong);
+      });
+
+      const entries = Object.entries(players).map(([name, s]) => ({ name, s, isHouse: false }));
+      if (house.total > 0) entries.push({ name: HOUSE_NAME, s: house, isHouse: true });
+
+      const list = entries
+        .map(({ name, s, isHouse }) => ({
           name,
+          isHouse,
           total: s.total,
           matches: s.matches,
           winRate: Math.round((s.wins / s.matches) * 100),
@@ -294,26 +606,51 @@
 
     // ---------- 渲染 ----------
 
+    // 依名字算出固定的頭像底色
+    function faceColor(name) {
+      let h = 0;
+      for (const ch of name) h = (h * 31 + ch.codePointAt(0)) % 360;
+      return `hsl(${h} 60% 42%)`;
+    }
+
     function renderLadder() {
       const board = buildLeaderboard(records);
       if (!board.length) return showStatus("目前還沒有任何對局紀錄。");
 
+      // HP 條：以全場最高與最低總分做比例，墊底的人也留一點血
+      const max = Math.max(...board.map(p => p.total));
+      const min = Math.min(...board.map(p => p.total));
+      const hp = t => (max === min ? 100 : Math.round(8 + ((t - min) / (max - min)) * 92));
+
       listEl.innerHTML = board.map(p => {
         const rankClass = p.rank <= 3 ? `rank-${p.rank}` : "";
         const trend = p.trend.map(s => `<i class="${s > 0 ? "w" : s < 0 ? "l" : ""}"></i>`).join("");
+        const initial = escapeHtml([...p.name][0] || "?");
+        const crown = p.rank === 1 ? `<span class="crown" aria-hidden="true">👑</span>` : "";
+        const meta = p.isHouse
+          ? `${p.matches} 局 · 抽東率 ${p.winRate}% · 最多 +${p.best}`
+          : `${p.matches} 戰 · 勝率 ${p.winRate}% · 最強 ${p.best > 0 ? "+" : ""}${p.best}`;
         return `
-          <div class="player-card">
-            <div class="left-section">
-              <div class="rank-tag ${rankClass}">#${p.rank}</div>
-              <div class="info-block">
-                <div class="name">${escapeHtml(p.name)}</div>
-                <div class="meta">${p.matches} 場 · 勝率 ${p.winRate}% · 單場最佳 ${p.best > 0 ? "+" : ""}${p.best}</div>
-                <div class="trend" title="最近 ${TREND_LENGTH} 場">${trend}</div>
+          <div class="player-card panel${p.isHouse ? " house" : ""}">
+            <div class="portrait" style="--face:${p.isHouse ? "#b8860b" : faceColor(p.name)}">
+              ${initial}
+              <span class="rank-tag ${rankClass}">${p.rank}</span>
+              ${crown}
+            </div>
+            <div class="info-block">
+              <div class="name">${escapeHtml(p.name)}${p.isHouse ? `<span class="tag">BOSS</span>` : ""}</div>
+              <div class="bars">
+                <div class="bar hp" title="戰力（總輸贏相對位置）"><span>HP</span><span class="track"><span class="fill" style="width:${hp(p.total)}%"></span></span></div>
+                <div class="bar mp" title="勝率 ${p.winRate}%"><span>MP</span><span class="track"><span class="fill" style="width:${p.winRate}%"></span></span></div>
               </div>
             </div>
             <div class="score-block">
               ${formatScore(p.total)}
               <div class="avg">場均 ${p.avg > 0 ? "+" : ""}${p.avg}</div>
+            </div>
+            <div class="meta-row">
+              <div class="meta">${meta}</div>
+              <div class="trend" title="最近 ${TREND_LENGTH} 場">${trend}</div>
             </div>
           </div>`;
       }).join("");
@@ -332,16 +669,22 @@
           html += `<div class="day-title">${escapeHtml(r.date)}</div>`;
           lastDate = r.date;
         }
-        const sum = r.sum ?? r.matches.reduce((acc, m) => acc + m.score, 0);
+        const dong = r.dong || 0;
+        const sum = r.sum ?? r.matches.reduce((acc, m) => acc + m.score, 0) + dong;
         const invalid = r.valid === false || sum !== 0;
-        const seats = [...r.matches]
-          .sort((a, b) => b.score - a.score)
-          .map(m => `<div class="seat"><span class="n">${escapeHtml(m.name)}</span>${formatScore(m.score)}</div>`)
-          .join("");
+        // 贏家站左邊、輸家站右邊，最大贏家標 WIN
+        const ranked = [...r.matches].sort((a, b) => b.score - a.score);
+        const top = ranked.length && ranked[0].score > 0 ? ranked[0].score : null;
+        const seat = m => `<div class="seat"><span class="n">${escapeHtml(m.name)}${m.score === top ? `<span class="ko">WIN</span>` : ""}</span>${formatScore(m.score)}</div>`;
+        const empty = `<div class="seat"><span class="n">—</span></div>`;
+        const winners = ranked.filter(m => m.score > 0).map(seat).join("") || empty;
+        const losers = ranked.filter(m => m.score <= 0).map(seat).join("") || empty;
         const flag = invalid
-          ? `<div class="flag">⚠️ 輸贏加總 ${sum > 0 ? "+" : ""}${sum}，不為零${r.row ? `（試算表第 ${r.row} 列）` : ""}</div>`
+          ? `<div class="flag">⚠️ 輸贏 + 東錢 = ${sum > 0 ? "+" : ""}${sum}，不為零${r.row ? `（試算表第 ${r.row} 列）` : ""}</div>`
           : "";
-        html += `<div class="game-card${invalid ? " invalid" : ""}">${seats}${flag}</div>`;
+        const dongLine = dong ? `<div class="dong-line">東 抽走 ${formatScore(dong)}</div>` : "";
+        const del = r.row ? `<button type="button" class="del" data-row="${r.row}">刪除這局</button>` : "";
+        html += `<div class="game-card panel${invalid ? " invalid" : ""}"><div class="side">${winners}</div><div class="vs">VS</div><div class="side">${losers}</div>${dongLine}${flag}${del}</div>`;
       });
 
       listEl.innerHTML = html;
@@ -349,12 +692,21 @@
 
     function render() {
       statusEl.hidden = true;
+      const isEntry = currentView === "entry";
+      entryForm.hidden = !isEntry;
+      listEl.hidden = isEntry;
+      refreshPlayerNames();
+
+      if (isEntry) {
+        noticeEl.hidden = true;
+        return;
+      }
       if (currentView === "ladder") renderLadder();
       else renderHistory();
 
       const bad = records.filter(r => r.valid === false || (r.sum ?? 0) !== 0).length;
       if (bad && currentView === "ladder") {
-        noticeEl.textContent = `⚠️ 有 ${bad} 筆對局輸贏加總不為零，請到「對局紀錄」檢查`;
+        noticeEl.textContent = `⚠️ 有 ${bad} 筆對局輸贏加總不為零，請到「戰報」檢查`;
         noticeEl.className = "notice warn";
         noticeEl.hidden = false;
       } else if (DEMO_MODE) {
@@ -367,6 +719,7 @@
     }
 
     function showStatus(msg) {
+      if (currentView === "entry") return;
       listEl.innerHTML = "";
       statusEl.textContent = msg;
       statusEl.hidden = false;
@@ -379,8 +732,10 @@
 
     // ---------- 資料載入 ----------
 
+    let demoStore = null;
+
     async function fetchData(force = false) {
-      if (DEMO_MODE) return { updatedAt: new Date().toISOString(), records: demoRecords() };
+      if (DEMO_MODE) return { updatedAt: new Date().toISOString(), records: (demoStore ||= demoRecords()) };
       const url = force ? `${API_URL}${API_URL.includes("?") ? "&" : "?"}nocache=1` : API_URL;
       const res = await fetch(url, { redirect: "follow" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -419,11 +774,13 @@
       for (let i = 0; i < 14; i++) {
         const day = new Date(2026, 8, 1 + i * 3);
         const pool = [...names].sort(() => rand() - 0.5).slice(0, 4);
+        const dong = i % 3 === 0 ? 0 : 100;
         const s = [0, 0, 0].map(() => Math.round((rand() * 1000 - 500) / 50) * 50);
-        s.push(-s.reduce((a, b) => a + b, 0));
+        s.push(-s.reduce((a, b) => a + b, 0) - dong);
         out.push({
           row: i + 2,
           date: day.toISOString().slice(0, 10),
+          dong,
           sum: 0,
           valid: true,
           matches: pool.map((name, k) => ({ name, score: s[k] }))
@@ -437,13 +794,201 @@
       return out;
     }
 
+    // ---------- 寫入 ----------
+
+    // 用 text/plain 送 JSON：屬於「簡單請求」，不會觸發 Apps Script 不支援的 CORS preflight
+    async function postApi(body) {
+      if (DEMO_MODE) return demoPost(body);
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(body),
+        redirect: "follow"
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "寫入失敗");
+      return data;
+    }
+
+    function demoPost(body) {
+      demoStore ||= demoRecords();
+      if (body.action === "add") {
+        const row = Math.max(1, ...demoStore.map(r => r.row)) + 1;
+        demoStore.push({ row, date: body.date, dong: body.dong || 0, sum: 0, valid: true, matches: body.matches });
+        return { ok: true, row };
+      }
+      demoStore = demoStore.filter(r => r.row !== body.row);
+      return { ok: true, row: body.row };
+    }
+
+    let toastTimer;
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2500);
+    }
+
+    function todayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    // 依出場次數排序，常打的人排前面
+    function refreshPlayerNames() {
+      const count = {};
+      records.forEach(r => r.matches.forEach(m => { count[m.name] = (count[m.name] || 0) + 1; }));
+      playerNamesEl.innerHTML = Object.keys(count)
+        .sort((a, b) => count[b] - count[a])
+        .map(n => `<option value="${escapeHtml(n)}"></option>`)
+        .join("");
+    }
+
+    function buildSeats() {
+      seatsEl.innerHTML = Array.from({ length: SEAT_COUNT }, (_, i) => `
+        <div class="seat-row">
+          <span class="p">${i + 1}P</span>
+          <input class="name" list="player-names" placeholder="玩家 ${i + 1}" maxlength="30" aria-label="玩家 ${i + 1} 名稱" />
+          <button type="button" class="sign pos" aria-label="切換正負號">+</button>
+          <input class="score" inputmode="numeric" pattern="[0-9]*" placeholder="0" aria-label="玩家 ${i + 1} 輸贏" />
+        </div>`).join("");
+    }
+
+    function readSeats() {
+      return [...seatsEl.querySelectorAll(".seat-row")].map(row => {
+        const raw = row.querySelector(".score").value.replace(/[^\d]/g, "");
+        const neg = row.querySelector(".sign").classList.contains("neg");
+        return {
+          name: row.querySelector(".name").value.trim(),
+          raw,
+          score: raw === "" ? 0 : (neg ? -1 : 1) * Number(raw)
+        };
+      });
+    }
+
+    function readDong() {
+      const raw = entryDong.value.replace(/[^\d]/g, "");
+      return raw === "" ? 0 : Number(raw);
+    }
+
+    function setSign(row, negative) {
+      const btn = row.querySelector(".sign");
+      btn.classList.toggle("neg", negative);
+      btn.classList.toggle("pos", !negative);
+      btn.textContent = negative ? "−" : "+";
+    }
+
+    function validateEntry() {
+      const seats = readSeats();
+      const dong = readDong();
+      const sum = seats.reduce((acc, s) => acc + s.score, 0) + dong;
+      const names = seats.map(s => s.name).filter(Boolean);
+      const blanks = seats.filter(s => s.raw === "");
+      let problem = "";
+
+      if (names.length < SEAT_COUNT) problem = "請填滿 4 位玩家";
+      else if (new Set(names).size < SEAT_COUNT) problem = "玩家名稱重複了";
+      else if (blanks.length) problem = "還有人沒填輸贏";
+      else if (sum !== 0) problem = dong ? "四人輸贏 + 東錢需為 0" : "四人輸贏加總需為 0";
+
+      const fillable = blanks.length === 1 && sum !== 0;
+      sumLineEl.className = "sum-line " + (sum === 0 && !blanks.length ? "ok" : "bad");
+      sumLineEl.innerHTML = `
+        <span>${dong ? `四人 + 東 ${dong}` : "加總"} = ${sum > 0 ? "+" : ""}${sum}${sum === 0 && !blanks.length ? " ✓" : ""}</span>
+        ${fillable ? `<button type="button" class="btn small" id="autofill">空白的人補 ${-sum > 0 ? "+" : ""}${-sum}</button>` : ""}`;
+
+      entrySubmit.disabled = !!problem || !entryDate.value;
+      return problem;
+    }
+
+    function resetScores() {
+      seatsEl.querySelectorAll(".seat-row").forEach(row => {
+        row.querySelector(".score").value = "";
+        setSign(row, false);
+      });
+      entryErrorEl.textContent = "";
+      validateEntry();
+    }
+
+    seatsEl.addEventListener("input", () => { entryErrorEl.textContent = ""; validateEntry(); });
+    seatsEl.addEventListener("click", e => {
+      const btn = e.target.closest(".sign");
+      if (!btn) return;
+      setSign(btn.closest(".seat-row"), !btn.classList.contains("neg"));
+      validateEntry();
+    });
+    sumLineEl.addEventListener("click", e => {
+      if (e.target.id !== "autofill") return;
+      const seats = readSeats();
+      const sum = seats.reduce((acc, s) => acc + s.score, 0) + readDong();
+      const idx = seats.findIndex(s => s.raw === "");
+      const row = seatsEl.querySelectorAll(".seat-row")[idx];
+      row.querySelector(".score").value = String(Math.abs(sum));
+      setSign(row, sum > 0);
+      validateEntry();
+    });
+    entryDate.addEventListener("input", validateEntry);
+    entryDong.addEventListener("input", () => { entryErrorEl.textContent = ""; validateEntry(); });
+
+    entryForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const problem = validateEntry();
+      if (problem) { entryErrorEl.textContent = problem; return; }
+
+      const matches = readSeats().map(({ name, score }) => ({ name, score }));
+      entrySubmit.disabled = true;
+      entrySubmit.textContent = "送出中…";
+      try {
+        await postApi({ action: "add", date: entryDate.value, dong: readDong(), matches });
+        toast("✅ 已記錄這一局");
+        resetScores(); // 保留玩家名字與東錢，同一桌下一局只要填分數
+        await load(true);
+      } catch (err) {
+        console.error(err);
+        entryErrorEl.textContent = `❌ ${err.message}`;
+      } finally {
+        entrySubmit.textContent = "FIGHT!";
+        validateEntry();
+      }
+    });
+
+    listEl.addEventListener("click", async e => {
+      const btn = e.target.closest(".del");
+      if (!btn) return;
+      const row = Number(btn.dataset.row);
+      const rec = records.find(r => r.row === row);
+      if (!rec) return;
+
+      const summary = rec.matches.map(m => `${m.name} ${m.score > 0 ? "+" : ""}${m.score}`).join("、") + (rec.dong ? `、東 +${rec.dong}` : "");
+      if (!confirm(`確定要刪除 ${rec.date} 這一局？\n${summary}\n\n刪除後會從試算表移除，無法復原。`)) return;
+
+      btn.disabled = true;
+      btn.textContent = "刪除中…";
+      try {
+        await postApi({ action: "delete", row, date: rec.date, dong: rec.dong || 0, matches: rec.matches });
+        toast("🗑️ 已刪除");
+        await load(true);
+      } catch (err) {
+        console.error(err);
+        toast(`❌ ${err.message}`);
+        btn.disabled = false;
+        btn.textContent = "刪除這局";
+      }
+    });
+
+    buildSeats();
+    entryDate.value = todayStr();
+    validateEntry();
+
     // ---------- 事件 ----------
 
     document.querySelectorAll(".tab").forEach(tab => {
       tab.addEventListener("click", () => {
         currentView = tab.dataset.view;
         document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t === tab)));
-        if (records.length) render();
+        if (records.length || currentView === "entry") render();
+        else showStatus("目前還沒有任何對局紀錄。");
       });
     });
 
