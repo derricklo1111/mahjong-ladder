@@ -173,9 +173,24 @@
       font-weight: 900;
       color: #fff;
       text-shadow: 2px 2px 0 #000;
-      background: var(--face, #5a3a9a);
+      background: radial-gradient(circle at 50% 35%, #4a64c8, #101a50 75%);
       border: 3px solid var(--ink);
       box-shadow: inset 0 0 0 2px #ffffff55;
+    }
+    .player-card.house .portrait { background: radial-gradient(circle at 50% 35%, #9a2ab8, #1a0428 75%); }
+    .portrait .sprite { width: 48px; height: 48px; image-rendering: pixelated; }
+    .portrait .fighter-name {
+      position: absolute;
+      left: 50%;
+      bottom: -9px;
+      transform: translateX(-50%);
+      font-family: var(--pixel-font);
+      font-size: 6px;
+      color: #fff;
+      background: #000;
+      padding: 2px 3px;
+      white-space: nowrap;
+      text-shadow: none;
     }
     .rank-tag {
       position: absolute;
@@ -606,11 +621,95 @@
 
     // ---------- 渲染 ----------
 
-    // 依名字算出固定的頭像底色
-    function faceColor(name) {
-      let h = 0;
-      for (const ch of name) h = (h * 31 + ch.codePointAt(0)) % 360;
-      return `hsl(${h} 60% 42%)`;
+    // ---------- 角色頭像（原創像素畫，致敬小朋友齊打交的經典角色造型） ----------
+    // H 頭髮/頭飾  S 皮膚  E 眼睛  M 嘴  C 衣服  A 配色  . 透明；外框黑線自動產生
+    const TOPS = {
+      spiky:  [".H..H.H..H..", ".HHHHHHHHHH.", "HHHHHHHHHHHH", "HHSSSSSSSSHH", ".HSSSSSSSSH."],
+      short:  ["...HHHHHH...", "..HHHHHHHH..", ".HHHHHHHHHH.", ".HSSSSSSSSH.", ".SSSSSSSSSS."],
+      band:   ["...HHHHHH...", "..HHHHHHHH..", ".HHHHHHHHHH.", "AAAAAAAAAAAA", ".SSSSSSSSSS."],
+      hat:    [".....HH.....", "....HHHH....", "...HHHHHH...", "AAAAAAAAAAAA", ".SSSSSSSSSS."],
+      hood:   ["...HHHHHH...", "..HHHHHHHH..", ".HHHHHHHHHH.", ".HHHHHHHHHH.", ".HSSSSSSSSH."],
+      helmet: ["...AAAAAA...", "..AHHHHHHA..", ".AHHHHHHHHA.", ".HHHHAAHHHH.", ".HSSSSSSSSH."]
+    };
+    const FACE = [".SEESSSSEES.", ".SSSSSSSSSS.", "..SSSMMSSS..", "...SSSSSS..."];
+    const BODIES = {
+      plain: ["..CCSSSSCC..", ".CCCCAACCCC.", "CCCCCAACCCCC"],
+      robe:  ["..CCSSSSCC..", ".CCCAAAACCC.", "CCCCAAAACCCC"],
+      cape:  ["A.CCSSSSCC.A", "AACCCCCCCCAA", "AAACCCCCCAAA"]
+    };
+
+    const FIGHTERS = [
+      { id: "DAVIS",  top: "spiky",  body: "plain", c: { H: "#5a3418", S: "#f2c49b", C: "#2f5fd0", A: "#ffffff" } },
+      { id: "DENNIS", top: "spiky",  body: "plain", c: { H: "#f0c020", S: "#f2c49b", C: "#20a8c8", A: "#ffffff" } },
+      { id: "WOODY",  top: "band",   body: "plain", c: { H: "#2a1a10", S: "#e8b488", C: "#e07818", A: "#d02020" } },
+      { id: "FIREN",  top: "spiky",  body: "robe",  c: { H: "#e83010", S: "#f2c49b", C: "#c02010", A: "#ffb020" } },
+      { id: "FREEZE", top: "short",  body: "robe",  long: true, c: { H: "#a8e0ff", S: "#f0d0b0", C: "#e8f4ff", A: "#3aa0e8" } },
+      { id: "JOHN",   top: "hat",    body: "robe",  c: { H: "#6a2ab8", S: "#f2c49b", C: "#5020a0", A: "#ffd040" } },
+      { id: "DEEP",   top: "band",   body: "plain", long: true, c: { H: "#181818", S: "#e8b488", C: "#802020", A: "#f0f0f0" } },
+      { id: "HENRY",  top: "hood",   body: "plain", c: { H: "#2a8a30", S: "#f2c49b", C: "#3aa040", A: "#8a5a20" } },
+      { id: "RUDOLF", top: "hood",   body: "plain", mask: true, c: { H: "#20243a", S: "#f2c49b", C: "#2a3050", A: "#c02020" } },
+      { id: "LOUIS",  top: "helmet", body: "plain", c: { H: "#b8c0c8", S: "#f2c49b", C: "#8890a0", A: "#e8c040" } }
+    ];
+    // 東 = 最終大魔王
+    const BOSS = { id: "JULIAN", top: "short", body: "cape", long: true, c: { H: "#e8e8f8", S: "#d8c8e8", C: "#2a1040", A: "#701890", E: "#ff2020" } };
+
+    function spriteGrid(f) {
+      const rows = [...TOPS[f.top], ...FACE, ...BODIES[f.body]].map(r => r.split(""));
+      for (let y = 5; y <= 8; y++) {
+        if (f.long) { // 長髮蓋住臉的兩側
+          const w = y >= 7 ? 2 : 1;
+          for (let x = 0; x < w; x++) { rows[y][x] = "H"; rows[y][11 - x] = "H"; }
+        }
+        if (f.mask && y >= 6) rows[y] = rows[y].map(ch => (ch === "S" || ch === "M" ? "H" : ch)); // 忍者面罩
+      }
+      return rows;
+    }
+
+    const spriteCache = new Map();
+    function spriteSvg(f) {
+      if (spriteCache.has(f.id)) return spriteCache.get(f.id);
+      const grid = spriteGrid(f);
+      const colors = { E: "#000", M: "#8a2a20", ...f.c };
+      const filled = (x, y) => grid[y] && grid[y][x] && grid[y][x] !== ".";
+      let rects = "";
+      // 外框：透明格子只要鄰接有色格子就塗黑
+      for (let y = -1; y <= 12; y++) {
+        for (let x = -1; x <= 12; x++) {
+          if (filled(x, y)) continue;
+          if (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) {
+            rects += `<rect x="${x + 1}" y="${y + 1}" width="1" height="1" fill="#000"/>`;
+          }
+        }
+      }
+      grid.forEach((row, y) => row.forEach((ch, x) => {
+        if (ch !== ".") rects += `<rect x="${x + 1}" y="${y + 1}" width="1" height="1" fill="${colors[ch]}"/>`;
+      }));
+      const svg = `<svg class="sprite" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+      spriteCache.set(f.id, svg);
+      return svg;
+    }
+
+    // 每位牌友固定配一個角色：依名字雜湊選角，撞角就往下找沒人用的（依首次出場順序）
+    function assignFighters(names) {
+      const map = new Map();
+      const used = new Set();
+      names.forEach(name => {
+        let h = 0;
+        for (const ch of name) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+        let idx = h % FIGHTERS.length;
+        for (let i = 0; i < FIGHTERS.length && used.has(idx); i++) idx = (idx + 1) % FIGHTERS.length;
+        used.add(idx);
+        if (used.size >= FIGHTERS.length) used.clear(); // 超過 10 人就重複使用
+        map.set(name, FIGHTERS[idx]);
+      });
+      return map;
+    }
+
+    function playerOrder(data) {
+      const seen = [];
+      [...data].sort((a, b) => (a.row || 0) - (b.row || 0))
+        .forEach(r => r.matches.forEach(m => { if (m.name && !seen.includes(m.name)) seen.push(m.name); }));
+      return seen;
     }
 
     function renderLadder() {
@@ -621,19 +720,21 @@
       const max = Math.max(...board.map(p => p.total));
       const min = Math.min(...board.map(p => p.total));
       const hp = t => (max === min ? 100 : Math.round(8 + ((t - min) / (max - min)) * 92));
+      const cast = assignFighters(playerOrder(records));
 
       listEl.innerHTML = board.map(p => {
         const rankClass = p.rank <= 3 ? `rank-${p.rank}` : "";
         const trend = p.trend.map(s => `<i class="${s > 0 ? "w" : s < 0 ? "l" : ""}"></i>`).join("");
-        const initial = escapeHtml([...p.name][0] || "?");
+        const fighter = p.isHouse ? BOSS : cast.get(p.name);
         const crown = p.rank === 1 ? `<span class="crown" aria-hidden="true">👑</span>` : "";
         const meta = p.isHouse
           ? `${p.matches} 局 · 抽東率 ${p.winRate}% · 最多 +${p.best}`
           : `${p.matches} 戰 · 勝率 ${p.winRate}% · 最強 ${p.best > 0 ? "+" : ""}${p.best}`;
         return `
           <div class="player-card panel${p.isHouse ? " house" : ""}">
-            <div class="portrait" style="--face:${p.isHouse ? "#b8860b" : faceColor(p.name)}">
-              ${initial}
+            <div class="portrait" title="${fighter.id}">
+              ${spriteSvg(fighter)}
+              <span class="fighter-name">${fighter.id}</span>
               <span class="rank-tag ${rankClass}">${p.rank}</span>
               ${crown}
             </div>
