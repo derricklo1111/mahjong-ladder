@@ -448,6 +448,32 @@
     }
     .room-bar b { font-family: var(--cjk-font); font-size: 15px; color: var(--yellow); margin-left: 6px; }
     .room-bar small { font-family: var(--cjk-font); font-size: 11px; color: var(--warn); }
+    .house-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      margin: -6px 0 12px;
+      font-size: 13px;
+      color: var(--text-sub);
+      text-shadow: 1px 1px 0 #000;
+      cursor: pointer;
+      user-select: none;
+    }
+    .house-toggle input {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      border: 2px solid var(--panel-edge);
+      background: #000;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+    .house-toggle input:checked { background: var(--yellow); border-color: var(--yellow); }
+    .house-toggle input:checked::after { content: ""; width: 6px; height: 6px; background: #000; }
+    .house-toggle input:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
     .boss-warning {
       grid-column: 1 / -1;
       background: #000000aa;
@@ -527,6 +553,10 @@
       <button id="refresh" class="refresh" title="重新整理" aria-label="重新整理"><span>↻</span></button>
     </div>
 
+    <label id="house-toggle" class="house-toggle">
+      <input type="checkbox" id="show-house" checked />
+      <span>顯示「東」的排名</span>
+    </label>
     <div id="notice" class="notice" hidden></div>
     <div id="status" class="status-box">LOADING… 洗牌中，拉取最新戰績</div>
     <div id="list" class="list"></div>
@@ -591,6 +621,9 @@
     const roomModeEl = document.getElementById("room-mode");
     const authBtn = document.getElementById("auth-btn");
     const entryTab = document.getElementById("entry-tab");
+    const houseToggleEl = document.getElementById("house-toggle");
+    const showHouseEl = document.getElementById("show-house");
+    const SHOW_HOUSE_KEY = "mahjong-ladder:showHouse";
     const SEAT_COUNT = 4;
     const HOUSE_NAME = "東";
 
@@ -640,7 +673,7 @@
 
     // ---------- 計算 ----------
 
-    function buildLeaderboard(data) {
+    function buildLeaderboard(data, includeHouse = true) {
       const players = {};
 
       // 依日期排序後累計，確保近況趨勢是時間順序
@@ -670,7 +703,7 @@
       });
 
       const entries = Object.entries(players).map(([name, s]) => ({ name, s, isHouse: false }));
-      if (house.total > 0) entries.push({ name: HOUSE_NAME, s: house, isHouse: true });
+      if (includeHouse && house.total > 0) entries.push({ name: HOUSE_NAME, s: house, isHouse: true });
 
       const list = entries
         .map(({ name, s, isHouse }) => ({
@@ -797,7 +830,7 @@
     }
 
     function renderLadder() {
-      const board = buildLeaderboard(records);
+      const board = buildLeaderboard(records, showHouseEl.checked);
       if (!board.length) return showStatus("目前還沒有任何對局紀錄。");
 
       // HP 條：以全場最高與最低總分做比例，墊底的人也留一點血
@@ -879,6 +912,7 @@
     function render() {
       statusEl.hidden = true;
       const isEntry = currentView === "entry";
+      houseToggleEl.hidden = currentView !== "ladder";
       entryForm.hidden = !isEntry;
       listEl.hidden = isEntry;
       refreshPlayerNames();
@@ -1186,6 +1220,12 @@
     });
 
     refreshBtn.addEventListener("click", () => load(true));
+
+    try { showHouseEl.checked = localStorage.getItem(SHOW_HOUSE_KEY) !== "0"; } catch {}
+    showHouseEl.addEventListener("change", () => {
+      try { localStorage.setItem(SHOW_HOUSE_KEY, showHouseEl.checked ? "1" : "0"); } catch {}
+      if (records.length) render();
+    });
 
     // ---------- 登入 ----------
 
