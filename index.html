@@ -433,6 +433,33 @@
       vertical-align: 3px;
       text-shadow: none;
     }
+    .login { margin-bottom: 16px; }
+    .login-sub { margin: -4px 0 4px; font-size: 13px; color: var(--text-sub); text-align: center; text-shadow: 1px 1px 0 #000; }
+    .room-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin: -8px 0 12px;
+      font-family: var(--pixel-font);
+      font-size: 9px;
+      color: var(--text-sub);
+      text-shadow: 1px 1px 0 #000;
+    }
+    .room-bar b { font-family: var(--cjk-font); font-size: 15px; color: var(--yellow); margin-left: 6px; }
+    .room-bar small { font-family: var(--cjk-font); font-size: 11px; color: var(--warn); }
+    .boss-warning {
+      grid-column: 1 / -1;
+      background: #000000aa;
+      border: 2px dashed #ffd24a;
+      color: #ffe23a;
+      font-size: 12px;
+      line-height: 1.6;
+      padding: 6px 10px;
+      text-shadow: 1px 1px 0 #000;
+    }
+    .boss-warning b { color: #ff6a4a; }
+    .boss-warning .siren { display: inline-block; animation: blink 0.8s steps(1) infinite; }
     .entry .error { color: var(--warn); font-size: 13px; min-height: 1em; text-shadow: 1px 1px 0 #000; }
 
     .toast {
@@ -471,11 +498,31 @@
       <p>大家都說自己輸，到底誰贏？</p>
     </header>
 
+    <div class="room-bar">
+      <span>ROOM <b id="room-name">測試房間</b> <small id="room-mode"></small></span>
+      <button type="button" id="auth-btn" class="btn small">登入</button>
+    </div>
+
+    <form id="login" class="entry login panel" hidden>
+      <div class="entry-title">PLAYER LOGIN</div>
+      <p class="login-sub">輸入房主給你的帳號密碼，進入你們這桌的專屬擂台</p>
+      <label class="field">帳號
+        <input id="login-user" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" />
+      </label>
+      <label class="field">密碼
+        <input id="login-pass" name="password" type="password" autocomplete="current-password" />
+      </label>
+      <div id="login-error" class="error" role="alert"></div>
+      <button type="submit" id="login-submit" class="btn primary">START</button>
+      <button type="button" id="login-cancel" class="btn small">先看看測試數據</button>
+    </form>
+
+    <div id="app">
     <div class="toolbar">
       <div class="tabs" role="tablist">
         <button class="tab" role="tab" data-view="ladder" aria-selected="true">戰力榜</button>
         <button class="tab" role="tab" data-view="history" aria-selected="false">戰報</button>
-        <button class="tab" role="tab" data-view="entry" aria-selected="false">開打</button>
+        <button class="tab" role="tab" data-view="entry" aria-selected="false" id="entry-tab">開打</button>
       </div>
       <button id="refresh" class="refresh" title="重新整理" aria-label="重新整理"><span>↻</span></button>
     </div>
@@ -504,6 +551,7 @@
     <datalist id="player-names"></datalist>
 
     <footer id="footer"></footer>
+    </div>
   </div>
 
   <div id="toast" class="toast panel" hidden role="status"></div>
@@ -514,6 +562,9 @@
 
     const DEMO_MODE = !/^https:\/\//.test(API_URL);
     const CACHE_KEY = "mahjong-ladder:data";
+    const SESSION_KEY = "mahjong-ladder:session";
+    const GUEST_ROOM = "測試房間";
+    const CREATOR_CUT = 0.3; // 東錢分給創作者的比例（純屬玩笑）
     const TREND_LENGTH = 5;
 
     const statusEl = document.getElementById("status");
@@ -530,10 +581,22 @@
     const playerNamesEl = document.getElementById("player-names");
     const toastEl = document.getElementById("toast");
     const entryDong = document.getElementById("entry-dong");
+    const appEl = document.getElementById("app");
+    const loginForm = document.getElementById("login");
+    const loginUser = document.getElementById("login-user");
+    const loginPass = document.getElementById("login-pass");
+    const loginErrorEl = document.getElementById("login-error");
+    const loginSubmit = document.getElementById("login-submit");
+    const roomNameEl = document.getElementById("room-name");
+    const roomModeEl = document.getElementById("room-mode");
+    const authBtn = document.getElementById("auth-btn");
+    const entryTab = document.getElementById("entry-tab");
     const SEAT_COUNT = 4;
     const HOUSE_NAME = "東";
 
     let records = [];
+    let session = null; // 登入後為 { token, room }；null = 訪客（只能看測試房間）
+    let loadSeq = 0;    // 切換房間時丟掉還在路上的舊回應
     let currentView = "ladder";
 
     // ---------- 工具 ----------
@@ -550,11 +613,22 @@
       return `<span class="amount ${cls}">${sign}${n.toLocaleString()}</span>`;
     }
 
+    // 每個房間各自快取，換房間不會看到別人的資料
+    function cacheKey() { return `${CACHE_KEY}:${session ? session.room : GUEST_ROOM}`; }
     function readCache() {
-      try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch { return null; }
+      try { return JSON.parse(localStorage.getItem(cacheKey())); } catch { return null; }
     }
     function writeCache(payload) {
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify(payload)); } catch {}
+      try { localStorage.setItem(cacheKey(), JSON.stringify(payload)); } catch {}
+    }
+    function readSession() {
+      try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; }
+    }
+    function writeSession(value) {
+      try {
+        if (value) localStorage.setItem(SESSION_KEY, JSON.stringify(value));
+        else localStorage.removeItem(SESSION_KEY);
+      } catch {}
     }
 
     // 相容舊版 API（直接回傳陣列）與新版（{ updatedAt, records }）
@@ -712,6 +786,16 @@
       return seen;
     }
 
+    function bossWarning(total) {
+      const cut = Math.round(total * CREATOR_CUT);
+      return `<div class="boss-warning">
+        <span class="siren">⚠️</span> 東家溫馨提醒：本站創作者熬夜寫程式，頭髮已陣亡一半。
+        東錢請自動抽 <b>${Math.round(CREATOR_CUT * 100)}%</b> LINE Pay 孝敬創作者，
+        本房目前應繳 <b>${cut.toLocaleString()}</b> 元。
+        賴帳者下一把聽牌必被截胡，自摸永遠差一張。🀄
+      </div>`;
+    }
+
     function renderLadder() {
       const board = buildLeaderboard(records);
       if (!board.length) return showStatus("目前還沒有任何對局紀錄。");
@@ -749,6 +833,7 @@
               ${formatScore(p.total)}
               <div class="avg">場均 ${p.avg > 0 ? "+" : ""}${p.avg}</div>
             </div>
+            ${p.isHouse ? bossWarning(p.total) : ""}
             <div class="meta-row">
               <div class="meta">${meta}</div>
               <div class="trend" title="最近 ${TREND_LENGTH} 場">${trend}</div>
@@ -784,7 +869,7 @@
           ? `<div class="flag">⚠️ 輸贏 + 東錢 = ${sum > 0 ? "+" : ""}${sum}，不為零${r.row ? `（試算表第 ${r.row} 列）` : ""}</div>`
           : "";
         const dongLine = dong ? `<div class="dong-line">東 抽走 ${formatScore(dong)}</div>` : "";
-        const del = r.row ? `<button type="button" class="del" data-row="${r.row}">刪除這局</button>` : "";
+        const del = r.row && session ? `<button type="button" class="del" data-row="${r.row}">刪除這局</button>` : "";
         html += `<div class="game-card panel${invalid ? " invalid" : ""}"><div class="side">${winners}</div><div class="vs">VS</div><div class="side">${losers}</div>${dongLine}${flag}${del}</div>`;
       });
 
@@ -836,25 +921,25 @@
     let demoStore = null;
 
     async function fetchData(force = false) {
-      if (DEMO_MODE) return { updatedAt: new Date().toISOString(), records: (demoStore ||= demoRecords()) };
-      const url = force ? `${API_URL}${API_URL.includes("?") ? "&" : "?"}nocache=1` : API_URL;
-      const res = await fetch(url, { redirect: "follow" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return normalize(await res.json());
+      const data = await postApi({ action: "list", nocache: force });
+      return normalize(data);
     }
 
     async function load(force = false) {
+      const seq = ++loadSeq;
       refreshBtn.classList.add("spinning");
       try {
         const payload = await fetchData(force);
+        if (seq !== loadSeq) return; // 期間換了房間
         records = payload.records;
         if (!DEMO_MODE) writeCache(payload);
         render();
         setFooter(payload.updatedAt, false);
       } catch (err) {
         console.error(err);
+        if (err.code === "AUTH" || seq !== loadSeq) return;
         if (!records.length) {
-          showStatus("❌ 載入失敗，請確認 API URL 是否正確與權限開放設定（誰可以存取：任何人）。");
+          showStatus("❌ 載入失敗，請檢查網路後按 ↻ 重試。");
         } else {
           noticeEl.textContent = "⚠️ 無法更新，目前顯示的是上次的資料";
           noticeEl.className = "notice warn";
@@ -903,16 +988,23 @@
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(session ? { ...body, token: session.token } : body),
         redirect: "follow"
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "寫入失敗");
+      if (!data.ok) {
+        const err = new Error(data.error || "操作失敗");
+        err.code = data.code;
+        if (data.code === "AUTH") logout(data.error);
+        throw err;
+      }
       return data;
     }
 
     function demoPost(body) {
+      if (body.action === "login") return { ok: true, token: "demo", room: { name: "示範房間" } };
+      if (body.action === "list") return { ok: true, updatedAt: new Date().toISOString(), records: (demoStore ||= demoRecords()) };
       demoStore ||= demoRecords();
       if (body.action === "add") {
         const row = Math.max(1, ...demoStore.map(r => r.row)) + 1;
@@ -1095,14 +1187,91 @@
 
     refreshBtn.addEventListener("click", () => load(true));
 
-    // 先顯示上次快取（秒開），再背景更新
-    const cached = !DEMO_MODE && readCache();
-    if (cached && cached.records) {
-      records = cached.records;
-      render();
-      setFooter(cached.updatedAt, true);
+    // ---------- 登入 ----------
+
+    function enterRoom() {
+      const guest = !session;
+      roomNameEl.textContent = guest ? GUEST_ROOM : session.room;
+      roomModeEl.textContent = guest ? "訪客唯讀" : "";
+      authBtn.textContent = guest ? "登入" : "登出";
+      entryTab.hidden = guest;
+      if (guest && currentView === "entry") {
+        currentView = "ladder";
+        document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.view === "ladder")));
+      }
+      loginForm.hidden = true;
+      appEl.hidden = false;
+      records = [];
+      listEl.innerHTML = "";
+      footerEl.textContent = "";
+
+      // 先顯示這個房間上次的快取（秒開），再背景更新
+      const cached = readCache();
+      if (cached && cached.records) {
+        records = cached.records;
+        render();
+        setFooter(cached.updatedAt, true);
+      } else {
+        entryForm.hidden = true;
+        listEl.hidden = false;
+        statusEl.textContent = "LOADING… 洗牌中，拉取最新戰績";
+        statusEl.hidden = false;
+      }
+      load(!!session);
     }
-    load();
+
+    function showLogin(message) {
+      appEl.hidden = true;
+      loginForm.hidden = false;
+      loginErrorEl.textContent = message || "";
+      loginPass.value = "";
+      (loginUser.value ? loginPass : loginUser).focus();
+    }
+
+    function logout(message) {
+      session = null;
+      writeSession(null);
+      enterRoom();
+      if (message) showLogin(message);
+    }
+
+    authBtn.addEventListener("click", () => {
+      if (!session) showLogin();
+      else if (confirm(`確定要登出「${session.room}」？`)) logout();
+    });
+    document.getElementById("login-cancel").addEventListener("click", () => {
+      loginForm.hidden = true;
+      appEl.hidden = false;
+    });
+
+    loginForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const user = loginUser.value.trim();
+      const pass = loginPass.value;
+      if (!user || !pass) { loginErrorEl.textContent = "請輸入帳號與密碼"; return; }
+
+      loginSubmit.disabled = true;
+      loginSubmit.textContent = "LOADING…";
+      loginErrorEl.textContent = "";
+      try {
+        const data = await postApi({ action: "login", user, pass });
+        session = { token: data.token, room: data.room.name };
+        writeSession(session);
+        loginPass.value = "";
+        enterRoom();
+        toast(`🀄 歡迎進入「${session.room}」`);
+      } catch (err) {
+        console.error(err);
+        loginErrorEl.textContent = `❌ ${err.message}`;
+      } finally {
+        loginSubmit.disabled = false;
+        loginSubmit.textContent = "START";
+      }
+    });
+
+    session = DEMO_MODE ? { token: "demo", room: "示範房間" } : readSession();
+    if (session && !session.token) session = null;
+    enterRoom();
   </script>
 </body>
 </html>
