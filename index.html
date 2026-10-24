@@ -1042,7 +1042,7 @@
       seatsEl.innerHTML = Array.from({ length: SEAT_COUNT }, (_, i) => `
         <div class="seat-row">
           <span class="p">${i + 1}P</span>
-          <input class="name" list="player-names" placeholder="玩家 ${i + 1}" maxlength="30" aria-label="玩家 ${i + 1} 名稱" />
+          <input class="name" list="player-names" autocomplete="off" placeholder="玩家 ${i + 1}" maxlength="30" aria-label="玩家 ${i + 1} 名稱" />
           <button type="button" class="sign pos" aria-label="切換正負號">+</button>
           <input class="score" inputmode="numeric" pattern="[0-9]*" placeholder="0" aria-label="玩家 ${i + 1} 輸贏" />
         </div>`).join("");
@@ -1204,6 +1204,12 @@
       records = [];
       listEl.innerHTML = "";
       footerEl.textContent = "";
+
+      // 換房間時清掉上一個房間輸入過的玩家名字與名稱建議，避免不同房間的人名混在一起
+      buildSeats();
+      entryDong.value = "";
+      playerNamesEl.innerHTML = "";
+      validateEntry();
 
       // 先顯示這個房間上次的快取（秒開），再背景更新
       const cached = readCache();
