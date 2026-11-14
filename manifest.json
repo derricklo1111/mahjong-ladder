@@ -1,12 +1,17 @@
 {
-  "name": "麻將齊打交 S1",
-  "short_name": "麻將齊打交",
+  "name": "雀市看盤",
+  "short_name": "雀市看盤",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#05071a",
-  "theme_color": "#05071a",
+  "background_color": "#0b0d11",
+  "theme_color": "#0b0d11",
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
   ]
 }

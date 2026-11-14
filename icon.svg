@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#0f1115"/>
-  <rect x="136" y="88" width="240" height="336" rx="36" fill="#f0f2f5"/>
-  <rect x="136" y="388" width="240" height="36" rx="18" fill="#2e7d32"/>
-  <text x="256" y="300" text-anchor="middle" font-size="200" font-weight="900" fill="#e50914" font-family="'Noto Serif TC','PMingLiU',serif">中</text>
+  <rect width="512" height="512" rx="96" fill="#0b0d11"/>
+  <rect x="150" y="80" width="212" height="296" rx="32" fill="#f0f2f5"/>
+  <rect x="150" y="344" width="212" height="32" rx="16" fill="#1fc46b"/>
+  <text x="256" y="276" text-anchor="middle" font-size="176" font-weight="900" fill="#ff4d57" font-family="'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif">中</text>
+  <polyline points="72,436 168,404 232,420 312,372 440,316" fill="none" stroke="#ff4d57" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M440 316 l-46 2 l26 38 z" fill="#ff4d57"/>
 </svg>
