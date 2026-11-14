@@ -328,7 +328,8 @@
     const signed = n => `${n > 0 ? "+" : ""}${n.toLocaleString()}`;
     const nameHash = name => { let h = 7; for (const ch of name) h = (h * 31 + ch.codePointAt(0)) >>> 0; return h; };
     const tickerCode = name => String(1101 + (nameHash(name) % 8800));
-    const volumeOf = recs => recs.reduce((a, r) => a + r.matches.reduce((b, m) => b + Math.max(0, m.score), 0), 0);
+    // 成交＝輸家付出去的錢（贏家收到的＋東抽走的）；只算贏家會漏掉被東抽走的部分
+    const volumeOf = recs => recs.reduce((a, r) => a + r.matches.reduce((b, m) => b + Math.max(0, -m.score), 0), 0);
 
     // 累積損益走勢圖：從 0 開始，每局加上當局輸贏
     function sparkline(hist, w = 96, h = 30) {
