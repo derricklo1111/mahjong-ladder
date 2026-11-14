@@ -97,7 +97,10 @@
     .index-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
     .ix-label { font-size: 12px; color: var(--mute); }
     .ix-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-top: 2px; }
-    .ix-val { font-family: var(--mono); font-weight: 700; font-size: 32px; color: var(--up); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    .ix-val { font-family: var(--mono); font-weight: 700; font-size: 32px; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    .ix-val.up { color: var(--up); }
+    .ix-val.down { color: var(--down); }
+    .ix-chg.flat { color: var(--mute); }
     .ix-chg { font-family: var(--mono); font-size: 14px; }
     .ix-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 12px; color: var(--mute); }
     .ix-meta b { font-family: var(--mono); }
@@ -328,8 +331,8 @@
     const signed = n => `${n > 0 ? "+" : ""}${n.toLocaleString()}`;
     const nameHash = name => { let h = 7; for (const ch of name) h = (h * 31 + ch.codePointAt(0)) >>> 0; return h; };
     const tickerCode = name => String(1101 + (nameHash(name) % 8800));
-    // 成交＝輸家付出去的錢（贏家收到的＋東抽走的）；只算贏家會漏掉被東抽走的部分
-    const volumeOf = recs => recs.reduce((a, r) => a + r.matches.reduce((b, m) => b + Math.max(0, -m.score), 0), 0);
+    // 牌友淨贏總額：目前總損益為正的牌友加總（不含東），等於牌友之間真正被贏走的錢
+    const netWinOf = recs => buildLeaderboard(recs, false).reduce((a, p) => a + Math.max(0, p.total), 0);
 
     // 累積損益走勢圖：從 0 開始，每局加上當局輸贏
     function sparkline(hist, w = 96, h = 30) {
@@ -354,12 +357,14 @@
       start: "登入", editBtn: "改單", delBtn: "刪單",
 
       hero(recs) {
-        const vol = volumeOf(recs);
         const dates = [...new Set(recs.map(r => r.date))].sort();
         const last = dates[dates.length - 1];
-        const todayVol = volumeOf(recs.filter(r => r.date === last));
-        const prev = vol - todayVol;
-        const pct = prev ? ((todayVol / prev) * 100).toFixed(2) : "—";
+        // 跟上一個交易日收盤比：拿掉最新一天的局重算一次
+        const net = netWinOf(recs);
+        const before = netWinOf(recs.filter(r => r.date !== last));
+        const diff = net - before;
+        const dir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+        const pct = before ? `${diff > 0 ? "+" : diff < 0 ? "−" : ""}${((Math.abs(diff) / before) * 100).toFixed(2)}%` : "—";
         const board = buildLeaderboard(recs, false);
         const ups = board.filter(p => p.total > 0).length;
         const downs = board.filter(p => p.total < 0).length;
@@ -370,10 +375,10 @@
         }).join("");
         return `
           <div class="index-card">
-            <div class="ix-label">雀市累計成交指數</div>
+            <div class="ix-label">牌友淨贏總額（不含東）</div>
             <div class="ix-row">
-              <span class="ix-val">${vol.toLocaleString()}</span>
-              <span class="ix-chg up">▲ ${todayVol.toLocaleString()}（+${pct}%）</span>
+              <span class="ix-val ${dir}">${net.toLocaleString()}</span>
+              <span class="ix-chg ${dir}">${diff > 0 ? "▲" : diff < 0 ? "▼" : "－"} ${Math.abs(diff).toLocaleString()}（${pct}）</span>
             </div>
             <div class="ix-meta"><span>最新交易日 ${escapeHtml(last)}</span><span>上漲 <b class="up">${ups}</b> 家</span><span>下跌 <b class="down">${downs}</b> 家</span></div>
           </div>
