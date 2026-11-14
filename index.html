@@ -298,9 +298,8 @@
     .game-card .seat .amount { font-size: 10px; }
     .game-card .ko { color: var(--win-color); font-family: var(--pixel-font); font-size: 8px; margin-left: 2px; }
     .game-card .flag { grid-column: 1 / -1; font-size: 12px; color: var(--warn); text-shadow: 1px 1px 0 #000; }
-    .game-card .del {
-      grid-column: 1 / -1;
-      justify-self: end;
+    .game-card .actions { grid-column: 1 / -1; justify-self: end; display: flex; gap: 6px; }
+    .game-card .del, .game-card .edit {
       border: 2px solid var(--ink);
       background: #1a2470;
       color: var(--text-sub);
@@ -310,7 +309,20 @@
       cursor: pointer;
     }
     .game-card .del:hover { color: #fff; background: #7a0d08; }
+    .game-card .edit:hover { color: #000; background: var(--yellow); }
     .game-card .del:disabled { opacity: 0.5; cursor: default; }
+    .edit-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      background: #000000aa;
+      border: 2px dashed var(--yellow);
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--yellow);
+      text-shadow: 1px 1px 0 #000;
+    }
 
     /* ---------- 記一筆：選擇角色 ---------- */
     .entry { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
@@ -562,7 +574,11 @@
     <div id="list" class="list"></div>
 
     <form id="entry" class="entry panel" hidden autocomplete="off">
-      <div class="entry-title">SELECT YOUR FIGHTERS</div>
+      <div class="entry-title" id="entry-title">SELECT YOUR FIGHTERS</div>
+      <div id="edit-banner" class="edit-banner" hidden>
+        <span id="edit-label"></span>
+        <button type="button" id="edit-cancel" class="btn small">取消修改</button>
+      </div>
       <label class="field">日期
         <input type="date" id="entry-date" required />
       </label>
@@ -624,10 +640,14 @@
     const houseToggleEl = document.getElementById("house-toggle");
     const showHouseEl = document.getElementById("show-house");
     const SHOW_HOUSE_KEY = "mahjong-ladder:showHouse";
+    const entryTitleEl = document.getElementById("entry-title");
+    const editBannerEl = document.getElementById("edit-banner");
+    const editLabelEl = document.getElementById("edit-label");
     const SEAT_COUNT = 4;
     const HOUSE_NAME = "東";
 
     let records = [];
+    let editing = null; // 修改中的那局：{ row, original: { date, dong, matches } }；null = 新增模式
     let session = null; // 登入後為 { token, room }；null = 訪客（只能看測試房間）
     let loadSeq = 0;    // 切換房間時丟掉還在路上的舊回應
     let currentView = "ladder";
@@ -902,8 +922,10 @@
           ? `<div class="flag">⚠️ 輸贏 + 東錢 = ${sum > 0 ? "+" : ""}${sum}，不為零${r.row ? `（試算表第 ${r.row} 列）` : ""}</div>`
           : "";
         const dongLine = dong ? `<div class="dong-line">東 抽走 ${formatScore(dong)}</div>` : "";
-        const del = r.row && session ? `<button type="button" class="del" data-row="${r.row}">刪除這局</button>` : "";
-        html += `<div class="game-card panel${invalid ? " invalid" : ""}"><div class="side">${winners}</div><div class="vs">VS</div><div class="side">${losers}</div>${dongLine}${flag}${del}</div>`;
+        const actions = r.row && session
+          ? `<div class="actions"><button type="button" class="edit" data-row="${r.row}">修改</button><button type="button" class="del" data-row="${r.row}">刪除這局</button></div>`
+          : "";
+        html += `<div class="game-card panel${invalid ? " invalid" : ""}"><div class="side">${winners}</div><div class="vs">VS</div><div class="side">${losers}</div>${dongLine}${flag}${actions}</div>`;
       });
 
       listEl.innerHTML = html;
@@ -1045,6 +1067,11 @@
         demoStore.push({ row, date: body.date, dong: body.dong || 0, sum: 0, valid: true, matches: body.matches });
         return { ok: true, row };
       }
+      if (body.action === "update") {
+        const rec = demoStore.find(r => r.row === body.row);
+        if (rec) Object.assign(rec, { date: body.date, dong: body.dong || 0, sum: 0, valid: true, matches: body.matches });
+        return { ok: true, row: body.row };
+      }
       demoStore = demoStore.filter(r => r.row !== body.row);
       return { ok: true, row: body.row };
     }
@@ -1164,23 +1191,82 @@
       if (problem) { entryErrorEl.textContent = problem; return; }
 
       const matches = readSeats().map(({ name, score }) => ({ name, score }));
+      const body = { action: editing ? "update" : "add", date: entryDate.value, dong: readDong(), matches };
+      // 修改時連同原本的內容一起送，後端可先比對該列是否仍是這一局，避免列號位移改錯局
+      if (editing) Object.assign(body, { row: editing.row, original: editing.original });
+
       entrySubmit.disabled = true;
       entrySubmit.textContent = "送出中…";
       try {
-        await postApi({ action: "add", date: entryDate.value, dong: readDong(), matches });
-        toast("✅ 已記錄這一局");
-        resetScores(); // 保留玩家名字與東錢，同一桌下一局只要填分數
+        await postApi(body);
+        if (editing) {
+          toast("✏️ 已修改這一局");
+          exitEdit();
+          switchView("history");
+        } else {
+          toast("✅ 已記錄這一局");
+          resetScores(); // 保留玩家名字與東錢，同一桌下一局只要填分數
+        }
         await load(true);
       } catch (err) {
         console.error(err);
         entryErrorEl.textContent = `❌ ${err.message}`;
       } finally {
-        entrySubmit.textContent = "FIGHT!";
+        entrySubmit.textContent = editing ? "UPDATE!" : "FIGHT!";
         validateEntry();
       }
     });
 
+    // ---------- 修改 ----------
+
+    function setEditMode(on) {
+      editBannerEl.hidden = !on;
+      entryTitleEl.textContent = on ? "EDIT ROUND" : "SELECT YOUR FIGHTERS";
+      entrySubmit.textContent = on ? "UPDATE!" : "FIGHT!";
+      if (on) editLabelEl.textContent = `✏️ 正在修改 ${editing.original.date} 這一局`;
+    }
+
+    function startEdit(rec) {
+      editing = {
+        row: rec.row,
+        original: { date: rec.date, dong: rec.dong || 0, matches: rec.matches.map(({ name, score }) => ({ name, score })) }
+      };
+      entryDate.value = rec.date;
+      entryDong.value = rec.dong ? String(rec.dong) : "";
+      seatsEl.querySelectorAll(".seat-row").forEach((row, i) => {
+        const m = rec.matches[i];
+        row.querySelector(".name").value = m ? m.name : "";
+        row.querySelector(".score").value = m ? String(Math.abs(m.score)) : "";
+        setSign(row, !!m && m.score < 0);
+      });
+      entryErrorEl.textContent = "";
+      setEditMode(true);
+      switchView("entry");
+      validateEntry();
+    }
+
+    function exitEdit() {
+      editing = null;
+      setEditMode(false);
+      buildSeats();
+      entryDong.value = "";
+      entryDate.value = todayStr();
+      entryErrorEl.textContent = "";
+      validateEntry();
+    }
+
+    document.getElementById("edit-cancel").addEventListener("click", () => {
+      exitEdit();
+      switchView("history");
+    });
+
     listEl.addEventListener("click", async e => {
+      const editBtn = e.target.closest(".edit");
+      if (editBtn) {
+        const rec = records.find(r => r.row === Number(editBtn.dataset.row));
+        if (rec) startEdit(rec);
+        return;
+      }
       const btn = e.target.closest(".del");
       if (!btn) return;
       const row = Number(btn.dataset.row);
@@ -1210,13 +1296,19 @@
 
     // ---------- 事件 ----------
 
+    function switchView(view) {
+      if (view !== "entry" && editing) exitEdit(); // 離開開打頁就放棄修改，避免回來時忘了自己在改舊局
+      currentView = view;
+      document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.view === view)));
+      if (records.length || view === "entry") return render();
+      entryForm.hidden = true;
+      listEl.hidden = false;
+      houseToggleEl.hidden = view !== "ladder";
+      showStatus("目前還沒有任何對局紀錄。");
+    }
+
     document.querySelectorAll(".tab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        currentView = tab.dataset.view;
-        document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t === tab)));
-        if (records.length || currentView === "entry") render();
-        else showStatus("目前還沒有任何對局紀錄。");
-      });
+      tab.addEventListener("click", () => switchView(tab.dataset.view));
     });
 
     refreshBtn.addEventListener("click", () => load(true));
@@ -1246,6 +1338,7 @@
       footerEl.textContent = "";
 
       // 換房間時清掉上一個房間輸入過的玩家名字與名稱建議，避免不同房間的人名混在一起
+      if (editing) { editing = null; setEditMode(false); }
       buildSeats();
       entryDong.value = "";
       playerNamesEl.innerHTML = "";
